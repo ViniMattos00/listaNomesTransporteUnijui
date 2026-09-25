@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transporte Universitário</title>
+  <meta name="description" content="Inscrição para o transporte universitário de terça-feira à noite para Ijuí.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --surface: #ffffff;
+      --text: #1a2233;
+      --muted: #5b6579;
+      --border: #d9deea;
+      --primary: #1f5eff;
+      --primary-hover: #1848c9;
+      --primary-soft: #e6edff;
+      --success: #16a34a;
+      --success-soft: #e7f7ed;
+      --error: #dc2626;
+      --shadow: 0 10px 30px rgba(20, 35, 80, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1420;
+        --surface: #182031;
+        --text: #e8ecf5;
+        --muted: #9aa5bb;
+        --border: #2b3549;
+        --primary: #5b8cff;
+        --primary-hover: #7aa2ff;
+        --primary-soft: #1e2a47;
+        --success: #4ade80;
+        --success-soft: #16301f;
+        --error: #f87171;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      line-height: 1.5;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1f5eff 0%, #0b3bb3 100%);
+      color: #fff;
+      padding: 28px 28px 24px;
+    }
+    .header .icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.18);
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .header p {
+      margin-top: 4px;
+      opacity: 0.88;
+      font-size: 0.95rem;
+    }
+
+    .trip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    form { padding: 28px; }
+
+    .field { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      font: inherit;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input::placeholder { color: var(--muted); opacity: .7; }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-soft);
+    }
+    .field.invalid input { border-color: var(--error); }
+    .error-msg {
+      display: none;
+      color: var(--error);
+      font-size: 0.82rem;
+      margin-top: 6px;
+    }
+    .field.invalid .error-msg { display: block; }
+
+    button {
+      width: 100%;
+      font: inherit;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #fff;
+      background: var(--primary);
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: background .15s, transform .05s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    button:hover { background: var(--primary-hover); }
+    button:active { transform: scale(0.99); }
+    button:disabled { opacity: .7; cursor: wait; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    button.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .note {
+      margin-top: 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .success {
+      display: none;
+      padding: 40px 28px;
+      text-align: center;
+    }
+    .success .check {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--success-soft);
+      color: var(--success);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+    }
+    .success h2 { font-size: 1.25rem; margin-bottom: 6px; }
+    .success p { color: var(--muted); font-size: 0.95rem; }
+    .success button {
+      margin-top: 24px;
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--border);
+    }
+    .success button:hover { background: var(--primary-soft); }
+
+    footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="header">
+      <div class="icon" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/>
+          <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/>
+          <circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/>
+        </svg>
+      </div>
+      <h1>Transporte Universitário</h1>
+      <p>Confirme sua presença no ônibus para a aula.</p>
+      <div class="trip">
+        <span class="chip">📅 Terça-feira · <span id="nextTuesday"></span></span>
+        <span class="chip">🌙 Noite</span>
+        <span class="chip">📍 Destino: Ijuí</span>
+      </div>
+    </div>
+
+    <form id="form" novalidate>
+      <div class="field" id="field-nome">
+        <label for="nome">Nome completo</label>
+        <input id="nome" name="nome" type="text" autocomplete="name" placeholder="Ex.: Maria da Silva Souza" required>
+        <div class="error-msg">Informe seu nome e sobrenome.</div>
+      </div>
+
+      <div class="field" id="field-cpf">
+        <label for="cpf">CPF</label>
+        <input id="cpf" name="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" required>
+        <div class="error-msg">CPF inválido. Confira os números digitados.</div>
+      </div>
+
+      <button type="submit" id="submitBtn">
+        <span class="spinner"></span>
+        <span class="label">Confirmar inscrição</span>
+      </button>
+      <p class="note">Seus dados são usados apenas para a lista de passageiros.</p>
+    </form>
+
+    <div class="success" id="success">
+      <div class="check">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h2>Inscrição confirmada!</h2>
+      <p id="successText">Seu lugar no ônibus de terça à noite está registrado.</p>
+      <button type="button" id="againBtn">Fazer outra inscrição</button>
+    </div>
+  </main>
+
+  <footer>
+    Transporte Universitário · Ijuí/RS<br>
+    © <span id="ano"></span> Vinícius Mattos. Todos os direitos reservados.
+  </footer>
+
+  <script>
+    // URL do Google Apps Script (Web App) que grava na planilha — preencher depois.
+    const SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwcHAD4lp7TUVIICAh5OCwvsiP4I6Dr714KTXTLbdh2gbdZInXdUMfLOny0GzSPd9aRYQ/exec';
+
+    const form = document.getElementById('form');
+    const nome = document.getElementById('nome');
+    const cpf = document.getElementById('cpf');
+    const btn = document.getElementById('submitBtn');
+    const success = document.getElementById('success');
+    document.getElementById('ano').textContent = new Date().getFullYear();
+
+    // Próxima terça-feira (ou hoje, se for terça)
+    function nextTuesday() {
+      const d = new Date();
+      d.setDate(d.getDate() + ((2 - d.getDay() + 7) % 7));
+      return d;
+    }
+    const tuesday = nextTuesday();
+    document.getElementById('nextTuesday').textContent =
+      tuesday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+    // Máscara de CPF
+    cpf.addEventListener('input', () => {
+      const v = cpf.value.replace(/\D/g, '').slice(0, 11);
+      cpf.value = v
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      document.getElementById('field-cpf').classList.remove('invalid');
+    });
+    nome.addEventListener('input', () =>
+      document.getElementById('field-nome').classList.remove('invalid'));
+
+    function validaCPF(valor) {
+      const c = valor.replace(/\D/g, '');
+      if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+      for (let t = 9; t < 11; t++) {
+        let soma = 0;
+        for (let i = 0; i < t; i++) soma += Number(c[i]) * (t + 1 - i);
+        const dig = ((soma * 10) % 11) % 10;
+        if (dig !== Number(c[t])) return false;
+      }
+      return true;
+    }
+
+    function validaNome(valor) {
+      return valor.trim().split(/\s+/).filter(p => p.length > 1).length >= 2;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nomeOk = validaNome(nome.value);
+      const cpfOk = validaCPF(cpf.value);
+      document.getElementById('field-nome').classList.toggle('invalid', !nomeOk);
+      document.getElementById('field-cpf').classList.toggle('invalid', !cpfOk);
+      if (!nomeOk) return nome.focus();
+      if (!cpfOk) return cpf.focus();
+
+      const dados = {
+        nome: nome.value.trim().replace(/\s+/g, ' '),
+        cpf: cpf.value,
+        dataViagem: tuesday.toLocaleDateString('pt-BR'),
+        enviadoEm: new Date().toLocaleString('pt-BR')
+      };
+
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.querySelector('.label').textContent = 'Enviando...';
+
+      try {
+        if (SHEET_ENDPOINT) {
+          await fetch(SHEET_ENDPOINT, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(dados)
+          });
+        } else {
+          console.log('Inscrição (planilha ainda não configurada):', dados);
+          await new Promise(r => setTimeout(r, 600));
+        }
+        const primeiroNome = dados.nome.split(' ')[0];
+        document.getElementById('successText').textContent =
+          `${primeiroNome}, seu lugar no ônibus de terça (${dados.dataViagem}) à noite está registrado.`;
+        form.style.display = 'none';
+        success.style.display = 'block';
+      } catch (err) {
+        alert('Não foi possível enviar. Verifique sua conexão e tente novamente.');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.querySelector('.label').textContent = 'Confirmar inscrição';
+      }
+    });
+
+    document.getElementById('againBtn').addEventListener('click', () => {
+      form.reset();
+      success.style.display = 'none';
+      form.style.display = 'block';
+      nome.focus();
+    });
+  </script>
+</body>
+</html>
