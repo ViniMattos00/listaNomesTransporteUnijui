@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Transporte Universitário</title>
-  <meta name="description" content="Informe os dias em que você não vai precisar do transporte universitário à noite para Ijuí.">
+  <meta name="description" content="Informe os dias em que você vai precisar do transporte universitário à noite para Ijuí.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -210,7 +210,7 @@
     .day input {
       width: 20px;
       height: 20px;
-      accent-color: var(--warn);
+      accent-color: var(--success);
       flex-shrink: 0;
       cursor: pointer;
     }
@@ -222,15 +222,15 @@
       font-weight: 600;
       border-radius: 999px;
       padding: 3px 10px;
-      background: var(--success-soft);
-      color: var(--success);
+      background: var(--bg);
+      color: var(--muted);
       white-space: nowrap;
     }
-    .day.off {
-      border-color: var(--warn);
-      background: var(--warn-soft);
+    .day.vai {
+      border-color: var(--success);
+      background: var(--success-soft);
     }
-    .day.off .tag { background: transparent; color: var(--warn); }
+    .day.vai .tag { background: transparent; color: var(--success); }
 
     .obs {
       font-size: 0.82rem;
@@ -318,7 +318,7 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 6px;
     }
-    .success li .off { color: var(--warn); font-weight: 600; }
+    .success li .off { color: var(--muted); font-weight: 600; }
     .success li .on { color: var(--success); font-weight: 600; }
     .success button { margin-top: 24px; }
 
@@ -341,7 +341,7 @@
         </svg>
       </div>
       <h1>Transporte Universitário</h1>
-      <p>Avise os dias em que você não vai usar o ônibus.</p>
+      <p>Marque os dias em que você vai usar o ônibus.</p>
       <div class="trip">
         <span class="chip">📅 <span id="periodo"></span></span>
         <span class="chip">🌙 Noite</span>
@@ -379,8 +379,8 @@
       <div class="steps"><span class="on"></span><span class="on"></span></div>
 
       <p class="who">Olá, <strong id="primeiroNome"></strong></p>
-      <h2>Em quais dias você <u>não</u> vai precisar do transporte à noite?</h2>
-      <p class="hint">Marque somente os dias em que não vai. Se for usar o ônibus todos os dias, deixe tudo desmarcado.</p>
+      <h2>Em quais dias você vai precisar do transporte à noite?</h2>
+      <p class="hint">Marque todos os dias em que vai usar o ônibus.</p>
 
       <div class="banner" id="jaRespondeu" hidden>
         Você já respondeu antes. Os dias que você marcou estão carregados abaixo, e dá para alterar.
@@ -389,8 +389,8 @@
       <div class="days" id="days"></div>
 
       <p class="obs">
-        <strong>Observação:</strong> se você já não tinha passagem cadastrada para algum desses dias,
-        não será cobrado por ele, mesmo que não marque que não vai.
+        <strong>Observação:</strong> os dias que ficarem desmarcados contam como dias em que você
+        não vai usar o transporte e não serão cobrados.
       </p>
 
       <div class="banner error" id="diasError" hidden></div>
@@ -412,7 +412,7 @@
       <h2>Resposta salva!</h2>
       <p id="okText"></p>
       <ul id="resumo"></ul>
-      <button type="button" class="secondary" id="againBtn">Responder por outra pessoa</button>
+      <button type="button" class="secondary" id="againBtn">Editar resposta</button>
     </div>
   </main>
 
@@ -454,13 +454,13 @@
           <span class="wd">${diaSemana(iso)}</span><br>
           <span class="dt">${paraBR(iso)}</span>
         </span>
-        <span class="tag">Transporte normal</span>
+        <span class="tag">Não vou</span>
       </label>`).join('');
     const checks = [...document.querySelectorAll('#days input')];
     const atualizaDia = (c) => {
       const card = c.closest('.day');
-      card.classList.toggle('off', c.checked);
-      card.querySelector('.tag').textContent = c.checked ? 'Não vou' : 'Transporte normal';
+      card.classList.toggle('vai', c.checked);
+      card.querySelector('.tag').textContent = c.checked ? 'Transporte normal' : 'Não vou';
     };
     checks.forEach(c => c.addEventListener('change', () => atualizaDia(c)));
 
@@ -510,12 +510,12 @@
     const CHAVE_LOCAL = 'transporte-ausencias';
     const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE_LOCAL)) || {}; } catch { return {}; } };
 
-    // Retorna { encontrado, ausente: ["27/10/2026", ...] }
+    // Retorna { encontrado, vai: ["27/10/2026", ...] }
     async function buscarRespostas(cpfDigitos) {
       if (!SHEET_ENDPOINT) {
         await new Promise(r => setTimeout(r, 400));
         const reg = lerLocal()[cpfDigitos];
-        return { encontrado: !!reg, ausente: reg ? reg.ausente : [] };
+        return { encontrado: !!reg, vai: (reg && reg.vai) || [] };
       }
       const url = `${SHEET_ENDPOINT}?acao=buscar&cpf=${cpfDigitos}&periodo=${DIAS.map(paraBR).join(',')}`;
       const resp = await fetch(url);
@@ -556,8 +556,8 @@
       const btn = $('nextBtn');
       carregando(btn, true, 'Buscando...');
       try {
-        const { encontrado, ausente } = await buscarRespostas(cpf.value.replace(/\D/g, ''));
-        checks.forEach(c => { c.checked = ausente.includes(paraBR(c.value)); atualizaDia(c); });
+        const { encontrado, vai } = await buscarRespostas(cpf.value.replace(/\D/g, ''));
+        checks.forEach(c => { c.checked = (vai || []).includes(paraBR(c.value)); atualizaDia(c); });
         $('jaRespondeu').hidden = !encontrado;
         $('primeiroNome').textContent = nome.value.trim().split(/\s+/)[0];
         mostraErro($('diasError'), '');
@@ -578,7 +578,7 @@
         nome: nome.value.trim().replace(/\s+/g, ' '),
         cpf: cpf.value,
         periodo: DIAS.map(paraBR),
-        ausente: checks.filter(c => c.checked).map(c => paraBR(c.value)),
+        vai: checks.filter(c => c.checked).map(c => paraBR(c.value)),
         enviadoEm: new Date().toLocaleString('pt-BR')
       };
 
@@ -586,14 +586,14 @@
       carregando(btn, true, 'Salvando...');
       try {
         await salvarRespostas(dados);
-        const n = dados.ausente.length;
+        const n = dados.vai.length;
         $('okText').textContent = n === 0
-          ? 'Você vai usar o transporte em todos os dias do período.'
-          : `Registramos ${n === 1 ? '1 dia' : n + ' dias'} sem transporte.`;
+          ? 'Você não vai usar o transporte em nenhum dia do período.'
+          : `Registramos ${n === 1 ? '1 dia' : n + ' dias'} com transporte.`;
         $('resumo').innerHTML = DIAS.map(iso => {
-          const off = dados.ausente.includes(paraBR(iso));
+          const vai = dados.vai.includes(paraBR(iso));
           return `<li><span>${diaSemana(iso)}, ${curta(iso)}</span>
-            <span class="${off ? 'off' : 'on'}">${off ? 'Não vai' : 'Transporte normal'}</span></li>`;
+            <span class="${vai ? 'on' : 'off'}">${vai ? 'Transporte normal' : 'Não vai'}</span></li>`;
         }).join('');
         mostra(stepOk);
       } catch (err) {
@@ -603,10 +603,11 @@
       }
     });
 
+    // Volta para a escolha dos dias da mesma pessoa, com o que acabou de salvar
     $('againBtn').addEventListener('click', () => {
-      stepId.reset();
-      mostra(stepId);
-      nome.focus();
+      $('jaRespondeu').hidden = false;
+      mostraErro($('diasError'), '');
+      mostra(stepDias);
     });
   </script>
 </body>

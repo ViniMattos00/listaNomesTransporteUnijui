@@ -1,20 +1,20 @@
 /**
- * Recebe da página index.html os dias em que cada aluno NÃO vai precisar
+ * Recebe da página index.html os dias em que cada aluno VAI precisar
  * do transporte e grava na planilha (uma linha por CPF, uma coluna por dia).
  * Cole este código em: Planilha > Extensões > Apps Script e implante como
  * App da Web (Executar como: eu · Quem pode acessar: qualquer pessoa).
  */
-const NOME_ABA = 'Dias sem transporte';
+const NOME_ABA = 'Dias com transporte';
 const CABECALHO = ['Atualizado em', 'Nome completo', 'CPF'];
 const COLUNAS_FIXAS = CABECALHO.length;
-const MARCA = 'Não vai';
+const MARCA = 'Vai';
 
 // GET ?acao=buscar&cpf=00000000000&periodo=27/10/2026,28/10/2026
-// Retorna os dias do período que o CPF já marcou como "não vai".
+// Retorna os dias do período que o CPF já marcou como "vai".
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.acao !== 'buscar') {
-    return resposta({ ok: true, mensagem: 'Web App de dias sem transporte no ar.' });
+    return resposta({ ok: true, mensagem: 'Web App de dias com transporte no ar.' });
   }
 
   try {
@@ -22,21 +22,21 @@ function doGet(e) {
     const periodo = String(p.periodo || '').split(',').filter(String);
     const aba = obterAba();
     const linha = acharLinha(aba, cpf);
-    if (!linha) return resposta({ ok: true, encontrado: false, ausente: [] });
+    if (!linha) return resposta({ ok: true, encontrado: false, vai: [] });
 
     const cabecalho = lerCabecalho(aba);
     const valores = aba.getRange(linha, 1, 1, cabecalho.length).getValues()[0];
-    const ausente = periodo.filter(dia => {
+    const vai = periodo.filter(dia => {
       const col = cabecalho.indexOf(dia);
       return col >= 0 && valores[col] === MARCA;
     });
-    return resposta({ ok: true, encontrado: true, ausente: ausente });
+    return resposta({ ok: true, encontrado: true, vai: vai });
   } catch (err) {
     return resposta({ ok: false, erro: String(err) });
   }
 }
 
-// POST { nome, cpf, periodo: [dias], ausente: [dias], enviadoEm }
+// POST { nome, cpf, periodo: [dias], vai: [dias], enviadoEm }
 // Cria ou atualiza a linha do CPF.
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -58,7 +58,7 @@ function doPost(e) {
     valores[1] = dados.nome;
     valores[2] = "'" + formatarCPF(cpf); // apóstrofo força texto (mantém zeros à esquerda)
     (dados.periodo || []).forEach(dia => {
-      valores[cabecalho.indexOf(dia)] = (dados.ausente || []).indexOf(dia) >= 0 ? MARCA : '';
+      valores[cabecalho.indexOf(dia)] = (dados.vai || []).indexOf(dia) >= 0 ? MARCA : '';
     });
     range.setValues([valores]);
 
