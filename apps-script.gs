@@ -8,6 +8,7 @@ const NOME_ABA = 'Dias com transporte';
 const CABECALHO = ['Atualizado em', 'Nome completo', 'CPF'];
 const COLUNAS_FIXAS = CABECALHO.length;
 const MARCA = 'Vai';
+const PRAZO_HORA = 12, PRAZO_MIN = 30; // limite para marcar um dia: 12:30 do próprio dia
 
 // GET ?acao=buscar&cpf=00000000000&periodo=27/10/2026,28/10/2026
 // Retorna os dias do período que o CPF já marcou como "vai".
@@ -54,6 +55,13 @@ function doPost(e) {
 
     const range = aba.getRange(linha, 1, 1, cabecalho.length);
     const valores = range.getValues()[0];
+
+    // Depois das 12:30 de um dia não dá mais para marcar "vai" nele
+    // (quem já estava marcado pode manter ou desmarcar).
+    const atrasados = (dados.vai || []).filter(dia =>
+      prazoEncerrado(dia) && valores[cabecalho.indexOf(dia)] !== MARCA);
+    if (atrasados.length) return resposta({ ok: false, erro: 'prazo', dias: atrasados });
+
     valores[0] = dados.enviadoEm;
     valores[1] = dados.nome;
     valores[2] = "'" + formatarCPF(cpf); // apóstrofo força texto (mantém zeros à esquerda)
@@ -107,6 +115,12 @@ function acharLinha(aba, cpf) {
     if (String(cpfs[i][0]).replace(/\D/g, '') === cpf) return i + 2;
   }
   return 0;
+}
+
+// "27/10/2026" -> true se já passou das 12:30 desse dia (horário de Brasília, UTC-3).
+function prazoEncerrado(dia) {
+  const p = dia.split('/').map(Number);
+  return Date.now() >= Date.UTC(p[2], p[1] - 1, p[0], PRAZO_HORA + 3, PRAZO_MIN);
 }
 
 function formatarCPF(c) {

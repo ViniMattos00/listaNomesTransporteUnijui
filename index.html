@@ -231,6 +231,9 @@
       background: var(--success-soft);
     }
     .day.vai .tag { background: transparent; color: var(--success); }
+    .day.bloqueado { opacity: .55; cursor: not-allowed; }
+    .day.bloqueado:hover { border-color: var(--border); }
+    .day.bloqueado input { cursor: not-allowed; }
 
     .obs {
       font-size: 0.82rem;
@@ -380,7 +383,7 @@
 
       <p class="who">Olá, <strong id="primeiroNome"></strong></p>
       <h2>Em quais dias você vai precisar do transporte à noite?</h2>
-      <p class="hint">Marque todos os dias em que vai usar o ônibus.</p>
+      <p class="hint">Marque todos os dias em que vai usar o ônibus. Cada dia pode ser marcado até as 12:30 do próprio dia.</p>
 
       <div class="banner" id="jaRespondeu" hidden>
         Você já respondeu antes. Os dias que você marcou estão carregados abaixo, e dá para alterar.
@@ -446,6 +449,17 @@
 
     $('periodo').textContent = `${curta(DIAS[0])} a ${curta(DIAS[DIAS.length - 1])}`;
 
+    // Prazo para marcar um dia: 12:30 (horário de Brasília, UTC-3) do próprio dia.
+    // Usa UTC para não depender do fuso configurado no aparelho.
+    const PRAZO_HORA = 12, PRAZO_MIN = 30;
+    const prazoEncerrado = (iso) => {
+      const [a, m, d] = iso.split('-').map(Number);
+      return Date.now() >= Date.UTC(a, m - 1, d, PRAZO_HORA + 3, PRAZO_MIN);
+    };
+    // Dias que a pessoa já tinha salvo como "vai" (esses continuam editáveis após o prazo)
+    let salvos = [];
+    const bloqueado = (iso) => prazoEncerrado(iso) && !salvos.includes(paraBR(iso));
+
     // Monta a lista de dias
     $('days').innerHTML = DIAS.map(iso => `
       <label class="day" data-dia="${iso}">
@@ -459,10 +473,17 @@
     const checks = [...document.querySelectorAll('#days input')];
     const atualizaDia = (c) => {
       const card = c.closest('.day');
+      const travado = bloqueado(c.value) && !c.checked;
+      c.disabled = travado;
       card.classList.toggle('vai', c.checked);
-      card.querySelector('.tag').textContent = c.checked ? 'Transporte normal' : 'Não vou';
+      card.classList.toggle('bloqueado', travado);
+      card.querySelector('.tag').textContent =
+        c.checked ? 'Transporte normal' : travado ? 'Prazo encerrado' : 'Não vou';
     };
     checks.forEach(c => c.addEventListener('change', () => atualizaDia(c)));
+    const atualizaDias = () => checks.forEach(atualizaDia);
+
+    const listaDias = (dias) => dias.map(d => d.slice(0, 5)).join(', ').replace(/, ([^,]*)$/, ' e $1');
 
     // Máscara de CPF
     cpf.addEventListener('input', () => {
@@ -539,7 +560,7 @@
         body: JSON.stringify(dados)
       });
       const json = await resp.json();
-      if (!json.ok) throw new Error(json.erro || 'Falha ao salvar');
+      if (!json.ok) throw Object.assign(new Error(json.erro || 'Falha ao salvar'), { dias: json.dias });
     }
 
     // Etapa 1 -> 2
@@ -557,7 +578,9 @@
       carregando(btn, true, 'Buscando...');
       try {
         const { encontrado, vai } = await buscarRespostas(cpf.value.replace(/\D/g, ''));
-        checks.forEach(c => { c.checked = (vai || []).includes(paraBR(c.value)); atualizaDia(c); });
+        salvos = vai || [];
+        checks.forEach(c => { c.checked = salvos.includes(paraBR(c.value)); });
+        atualizaDias();
         $('jaRespondeu').hidden = !encontrado;
         $('primeiroNome').textContent = nome.value.trim().split(/\s+/)[0];
         mostraErro($('diasError'), '');
@@ -574,6 +597,17 @@
     // Etapa 2 -> 3
     stepDias.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // A página pode ter ficado aberta e passado das 12:30 de algum dia marcado
+      const atrasados = checks.filter(c => c.checked && bloqueado(c.value));
+      if (atrasados.length) {
+        atrasados.forEach(c => { c.checked = false; });
+        atualizaDias();
+        const dias = atrasados.map(c => paraBR(c.value));
+        return mostraErro($('diasError'),
+          `O prazo para marcar ${listaDias(dias)} terminou às 12:30 desse dia. Confira os dias e salve de novo.`);
+      }
+
       const dados = {
         nome: nome.value.trim().replace(/\s+/g, ' '),
         cpf: cpf.value,
@@ -586,6 +620,7 @@
       carregando(btn, true, 'Salvando...');
       try {
         await salvarRespostas(dados);
+        salvos = dados.vai;
         const n = dados.vai.length;
         $('okText').textContent = n === 0
           ? 'Você não vai usar o transporte em nenhum dia do período.'
@@ -597,6 +632,13 @@
         }).join('');
         mostra(stepOk);
       } catch (err) {
+        if (err.message === 'prazo' && err.dias) {
+          checks.forEach(c => { if (err.dias.includes(paraBR(c.value))) c.checked = false; });
+          atualizaDias();
+          mostraErro($('diasError'),
+            `O prazo para marcar ${listaDias(err.dias)} terminou às 12:30 desse dia. Confira os dias e salve de novo.`);
+          return;
+        }
         mostraErro($('diasError'), 'Não foi possível salvar. Verifique sua conexão e tente novamente.');
       } finally {
         carregando(btn, false, 'Salvar');
@@ -607,6 +649,7 @@
     $('againBtn').addEventListener('click', () => {
       $('jaRespondeu').hidden = false;
       mostraErro($('diasError'), '');
+      atualizaDias();
       mostra(stepDias);
     });
   </script>
